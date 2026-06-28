@@ -21,8 +21,8 @@ jobs:
       - name: Configure AWS via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.ECR_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.ECR_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr
@@ -35,7 +35,7 @@ jobs:
       - name: Scan image (Trivy) — fail on HIGH/CRITICAL
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.ECR_REPO }}:${{ github.sha }}
+          image-ref: ${{ vars.ECR_REPO }}:${{ github.sha }}
           severity: HIGH,CRITICAL
           exit-code: '1'           # block the pipeline if vulns found
 
