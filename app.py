@@ -8,6 +8,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in ("/healthz", "/ready"):
             self.wfile.write(b"ok")
         else:
-            self.wfile.write(b"Hello World from EKS! - Development\n")
+            self.wfile.write(b"Hi from Argocd Deployment\n")
 
 HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
