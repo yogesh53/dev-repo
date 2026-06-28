@@ -30,7 +30,7 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t $ECR_REPO:${{ github.sha }} .
+          docker build -t ${{ vars.ECR_REPO }}:${{ github.sha }} .
 
       - name: Scan image (Trivy) — fail on HIGH/CRITICAL
         uses: aquasecurity/trivy-action@master
@@ -41,7 +41,7 @@ jobs:
 
       - name: Push image
         run: |
-          docker push $ECR_REPO:${{ github.sha }}
+          docker push ${{ vars.ECR_REPO }}:${{ github.sha }}
 
   # update-manifest:
   #   needs: build
