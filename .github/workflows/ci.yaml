@@ -1,0 +1,72 @@
+name: ci
+on:
+  push:
+    branches: [main]
+
+concurrency:                      # prevent overlapping deploys
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write                 # OIDC
+  contents: read
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::$ACCOUNT_ID:role/github-actions-ecr
+          aws-region: $AWS_REGION
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REPO:${{ github.sha }} .
+
+      - name: Scan image (Trivy) — fail on HIGH/CRITICAL
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: $ECR_REPO:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'           # block the pipeline if vulns found
+
+      - name: Push image
+        run: |
+          docker push $ECR_REPO:${{ github.sha }}
+
+  # update-manifest:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout config-repo
+  #       uses: actions/checkout@v4
+  #       with:
+  #         repository: <you>/<config-repo>
+  #         token: ${{ secrets.CONFIG_REPO_PAT }}   # PAT or GitHub App with write
+  #         path: config
+
+  #     - name: Bump dev image tag
+  #       working-directory: config/overlay/dev
+  #       run: |
+  #         curl -sLo /usr/local/bin/kustomize https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize
+  #         # (or install via official script)
+  #         kustomize edit set image hello-world=<ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/hello-world:${{ github.sha }}
+
+  #     - name: Commit & push
+  #       working-directory: config
+  #       run: |
+  #         git config user.name  "ci-bot"
+  #         git config user.email "ci-bot@users.noreply.github.com"
+  #         git commit -am "deploy(dev): hello-world ${{ github.sha }}"
+  #         git push
